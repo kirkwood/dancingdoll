@@ -25,7 +25,7 @@ class NettyComm(endpoint: Endpoint, peers: Array[Endpoint]) extends Comm {
   //   Netty connect p.toInetSocketAddress
   // }
 
-  // val senders: Array[Endpoint] = Array()
+  val senders: Array[Endpoint] = Array()
 
   override def send(data: Array[Byte]): Array[Result] = {
     senders map { s =>
