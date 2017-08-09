@@ -18,8 +18,8 @@ package coop.rchain.comm
 // import scodec.bits.ByteVector
 
 class NettyComm(endpoint: Endpoint, peers: Array[Endpoint]) extends Comm {
-  val bossGroup = new NioEventLoopGroup
-  val workerGroup = new NioEventLoopGroup
+  // val bossGroup = new NioEventLoopGroup
+  // val workerGroup = new NioEventLoopGroup
 
   // lazy val senders = peers map { p =>
   //   Netty connect p.toInetSocketAddress
