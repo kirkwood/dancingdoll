@@ -24,9 +24,9 @@ Suppose I want to run on one physical machine three nodes A, B, and C, listening
 
 | Node name (for your reference) | listen address | peer addresses | http interaction port |
 | --- | --- | --- | --- |
-| A | *:33333 | localhost:33334, localhost:33335 | 8877 |
-| B | *:33334 | localhost:33333, localhost:33335 | 8878 |
-| C | *:33335 | localhost:33333, localhost:33334 | 8879 |
+| A | *:33333 | localhost:33334, localhost:33335 | 8883 |
+| B | *:33334 | localhost:33333, localhost:33335 | 8884 |
+| C | *:33335 | localhost:33333, localhost:33334 | 8885 |
 
 (If the nodes run on machines with different addresses, they may not need to set the listen address or http port, as the defaults `*:33333` and `8878` may work fine.)
 
