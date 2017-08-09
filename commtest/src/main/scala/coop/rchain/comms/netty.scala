@@ -1,14 +1,14 @@
 package coop.rchain.comm
 
-import io.netty.bootstrap.ServerBootstrap;
+// import io.netty.bootstrap.ServerBootstrap;
 
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
+// import io.netty.channel.ChannelFuture;
+// import io.netty.channel.ChannelInitializer;
+// import io.netty.channel.ChannelOption;
+// import io.netty.channel.EventLoopGroup;
+// import io.netty.channel.nio.NioEventLoopGroup;
+// import io.netty.channel.socket.SocketChannel;
+// import io.netty.channel.socket.nio.NioServerSocketChannel;
 
 
 // import scalaz.netty._
@@ -21,12 +21,9 @@ class NettyComm(endpoint: Endpoint, peers: Array[Endpoint]) extends Comm {
   val bossGroup = new NioEventLoopGroup
   val workerGroup = new NioEventLoopGroup
 
-  lazy val senders = peers map { =>
-
-
-  lazy val senders = peers map { p =>
-    Netty connect p.toInetSocketAddress
-  }
+  // lazy val senders = peers map { p =>
+  //   Netty connect p.toInetSocketAddress
+  // }
 
   // val senders: Array[Endpoint] = Array()
 

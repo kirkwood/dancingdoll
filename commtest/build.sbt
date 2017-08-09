@@ -39,9 +39,9 @@ libraryDependencies ++= Seq(
   // "io.circe" %% "circe-core" % "0.8.0",
   "io.circe" %% "circe-generic" % "0.8.0",
   "io.circe" %% "circe-parser" % "0.8.0",
-  "io.circe" %% "circe-literal" % "0.8.0",
+  "io.circe" %% "circe-literal" % "0.8.0"
 
-  "io.netty" %% "netty-all" % "4.1.14.Final"
+  // "io.netty" %% "netty-all" % "4.1.10.Final"
 )
 
 // resolvers += "RichRelevance Bintray" at "http://dl.bintray.com/rr/releases"
