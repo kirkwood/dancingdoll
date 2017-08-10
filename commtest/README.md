@@ -50,7 +50,7 @@ $ sbt "run --peers localhost:33333,localhost:33334 --listen *:33335 --http-port 
 #### Interacting with the things
 Griff's KV API is attached (loosely) to the HTTP endpoint, so you can issue HTTP requests of the following forms:
 
-##### GET `/:key`
+##### GET `/get/:key`
 Return a JSON value that is the result of the query in `:key`.
 
 ##### GET `/dump`
