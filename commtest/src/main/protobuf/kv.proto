@@ -1,0 +1,17 @@
+syntax = "proto3";
+package coop.rchain;
+
+message Header {
+    uint64 version    = 1;
+    bytes  node_id    = 2;
+    bytes  method     = 3;
+    uint64 txn_number = 4;
+    uint64 timestamp  = 5;
+}
+
+message KeyValueCommand {
+    Header header     = 1;
+    bytes  command    = 2;
+    bytes  key        = 3;
+    bytes  value      = 4;
+}
