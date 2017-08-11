@@ -50,14 +50,14 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   verify
 }
 
-class Receiver(comm: Comm, commands: BlockingQueue[KeyValueCommand]) extends Thread {
+class Receiver(comm: Comm, commands: BlockingQueue[Protocol]) extends Thread {
   override def run(): Unit = {
     while (true) {
       val stuff = comm.recv()
       stuff match {
         case Response(d) => {
           println(s"Received: " + new String(d))
-          commands add (KeyValueCommand parseFrom d)
+          commands add (Protocol parseFrom d)
         }
         case Error(e) => println(s"Error: $e")
       }
@@ -65,7 +65,7 @@ class Receiver(comm: Comm, commands: BlockingQueue[KeyValueCommand]) extends Thr
   }
 }
 
-class Mutator(me: UUID, comm: Comm, store: KeyValueStore, commands: BlockingQueue[KeyValueCommand]) extends Thread {
+class Mutator(me: UUID, comm: Comm, store: KeyValueStore, commands: BlockingQueue[Protocol]) extends Thread {
   val buf = new java.io.ByteArrayOutputStream
   val uuid_str = me toString
 
@@ -77,24 +77,38 @@ class Mutator(me: UUID, comm: Comm, store: KeyValueStore, commands: BlockingQueu
 
       println(s"COMMAND: $cmd")
 
-      if (cmd.command == setCmd) {
-        store.add(new Key(cmd.key toStringUtf8), (cmd.value toStringUtf8))
-        cmd.header match {
-          case Some(h) => {
-            if ((h.nodeId toStringUtf8) == uuid_str) {
-              (buf reset)
-              (cmd writeTo buf)
-              (comm send (buf toByteArray)) foreach { r =>
-                println(
-                  r match {
+      import Protocol.Message
+      cmd.message match {
+        case Message.Hello(_) => ()
+        case Message.Disconnect(_) => ()
+        case Message.Ping(_) => ()
+        case Message.Pong(_) => ()
+        case Message.GetPeers(_) => ()
+        case Message.Peers(_) => ()
+        case Message.GetBlocks(_) => ()
+        case Message.Blocks(_) => ()
+        case Message.Mutation(m) => {
+          store.add(new Key(m.key toStringUtf8), m.value toStringUtf8)
+          cmd.header match {
+            case Some(h) => {
+              println(h)
+              // If this mutation originated here, propagate it to all
+              // peers.
+              if (h.nodeId.toStringUtf8 == uuid_str) {
+                buf.reset
+                cmd.writeTo(buf)
+                (comm send (buf toByteArray)) foreach { r =>
+                  println(r match {
                     case Response(d) => s"data: $d: ‘" + new String(d) + "’"
                     case Error(msg) => s"error: $msg"
-                  }
-                )
-              }
+                  })}}}
+            case None => {
+              println("No header?")
             }
           }
-          case None => ()
+        }
+        case Message.Empty => {
+          println("Got EMPTY message; that ain't good.")
         }
       }
     }
@@ -125,7 +139,7 @@ object CommTest {
     println(s"I am $me")
 
 
-    val cmdQueue = new java.util.concurrent.LinkedBlockingQueue[KeyValueCommand]
+    val cmdQueue = new java.util.concurrent.LinkedBlockingQueue[Protocol]
 
     val comm = 
       conf.transport() match {
@@ -138,7 +152,13 @@ object CommTest {
     val mutator = new Mutator(me, comm, db, cmdQueue)
     mutator start
 
-    val http = new HttpServer(conf.httpPort(), db, me, cmdQueue)
+    val http = new HttpServer(
+      conf.httpPort(),
+      new MessageHandler(
+        db,
+        new MessageFactory(me),
+        cmdQueue))
+
     http start
 
     val receiver = new Receiver(comm, cmdQueue)
