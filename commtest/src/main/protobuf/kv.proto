@@ -57,5 +57,5 @@ message Protocol {
         GetBlocks  get_blocks =  8;
         Blocks     blocks     =  9;
         Mutation   mutation   = 10;
-
+    }
 }

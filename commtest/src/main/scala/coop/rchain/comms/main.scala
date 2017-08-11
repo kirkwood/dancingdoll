@@ -65,56 +65,6 @@ class Receiver(comm: Comm, commands: BlockingQueue[Protocol]) extends Thread {
   }
 }
 
-class Mutator(me: UUID, comm: Comm, store: KeyValueStore, commands: BlockingQueue[Protocol]) extends Thread {
-  val buf = new java.io.ByteArrayOutputStream
-  val uuid_str = me toString
-
-  override def run(): Unit = {
-    val setCmd = com.google.protobuf.ByteString.copyFromUtf8("set")
-
-    while (true) {
-      val cmd = (commands take)
-
-      println(s"COMMAND: $cmd")
-
-      import Protocol.Message
-      cmd.message match {
-        case Message.Hello(_) => ()
-        case Message.Disconnect(_) => ()
-        case Message.Ping(_) => ()
-        case Message.Pong(_) => ()
-        case Message.GetPeers(_) => ()
-        case Message.Peers(_) => ()
-        case Message.GetBlocks(_) => ()
-        case Message.Blocks(_) => ()
-        case Message.Mutation(m) => {
-          store.add(new Key(m.key toStringUtf8), m.value toStringUtf8)
-          cmd.header match {
-            case Some(h) => {
-              println(h)
-              // If this mutation originated here, propagate it to all
-              // peers.
-              if (h.nodeId.toStringUtf8 == uuid_str) {
-                buf.reset
-                cmd.writeTo(buf)
-                (comm send (buf toByteArray)) foreach { r =>
-                  println(r match {
-                    case Response(d) => s"data: $d: ‘" + new String(d) + "’"
-                    case Error(msg) => s"error: $msg"
-                  })}}}
-            case None => {
-              println("No header?")
-            }
-          }
-        }
-        case Message.Empty => {
-          println("Got EMPTY message; that ain't good.")
-        }
-      }
-    }
-  }
-}
-
 object CommTest {
   def makeEndpoint(spec: String): Endpoint = {
     EndpointFactory.fromString(spec, defaultPort = Defaults.listenPort)
@@ -129,15 +79,12 @@ object CommTest {
       .filter { x => x != "" }
       .map { x => makeEndpoint(x) }
 
-    peers foreach { x => println("peer: " + x) }
-
     val db = new KeyValueStore
 
     println(conf.summary)
 
     val me = UUID.randomUUID
     println(s"I am $me")
-
 
     val cmdQueue = new java.util.concurrent.LinkedBlockingQueue[Protocol]
 
@@ -149,31 +96,13 @@ object CommTest {
           new NettyComm(listen, peers)
       }
 
-    val mutator = new Mutator(me, comm, db, cmdQueue)
-    mutator start
+    val messageHandler = new MessageHandler(me, comm, db, cmdQueue)
+    messageHandler start
 
-    val http = new HttpServer(
-      conf.httpPort(),
-      new MessageHandler(
-        db,
-        new MessageFactory(me),
-        cmdQueue))
-
+    val http = new HttpServer(conf.httpPort(), messageHandler)
     http start
 
     val receiver = new Receiver(comm, cmdQueue)
     receiver.start
-
-    // for (i <- 1 to 10) {
-    //   Thread.sleep(1000)
-    //   (comm send (s"ME: $me ($i)" getBytes)) foreach { r =>
-    //     println(
-    //       r match {
-    //         case Response(d) => s"data: $d: ‘" + new String(d) + "’"
-    //         case Error(msg) => s"error: $msg"
-    //       }
-    //     )
-    //   }
-    // }
   }
 }
