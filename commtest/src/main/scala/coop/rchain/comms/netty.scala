@@ -17,7 +17,7 @@ package coop.rchain.comm
 // import java.net.InetSocketAddress
 // import scodec.bits.ByteVector
 
-class NettyComm(endpoint: Endpoint, peers: Array[Endpoint]) extends Comm {
+class NettyComm(p: Peer) extends Comm {
   // val bossGroup = new NioEventLoopGroup
   // val workerGroup = new NioEventLoopGroup
 
@@ -27,13 +27,28 @@ class NettyComm(endpoint: Endpoint, peers: Array[Endpoint]) extends Comm {
 
   val senders: Array[Endpoint] = Array()
 
-  override def send(data: Array[Byte]): Array[Result] = {
-    senders map { s =>
-      Error("Unimplemented")
+  override def send(data: Array[Byte]) = {
+    senders foreach { s =>
+      ()
     }
   }
+
+  override def sendTo(data: Array[Byte], id: java.util.UUID) = ()
 
   override def recv(): Result = {
     Error("Unimplemented")
   }
+
+  override def addPeer(p: Peer) = {
+  }
+
+  override def removePeer(p: Peer) = {
+  }
+
+  override def removePeer(id: java.util.UUID) = {
+  }
+
+  override def getPeers: Array[Peer] = Array()
+
+  override def peer = p
 }

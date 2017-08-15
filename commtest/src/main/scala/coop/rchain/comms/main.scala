@@ -41,6 +41,10 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     default = None,
     descr = "Comma-separated list of peer nodes in host:port format.")
 
+  val home = opt[String](
+    default = None,
+    descr = "Home address for initial seed.")
+
   val httpPort = opt[Int](
     default = Defaults.httpPort,
     validate = (0 <),
@@ -91,10 +95,12 @@ object CommTest {
     val comm = 
       conf.transport() match {
         case "zeromq" =>
-          new ZeromqComm(listen, peers)
+          new ZeromqComm(new Peer(me, listen))
         case "netty" =>
-          new NettyComm(listen, peers)
+          new NettyComm(new Peer(me, listen))
       }
+
+    peers foreach { p => comm.addPeer(new Peer(UUID.randomUUID, p)) }
 
     val messageHandler = new MessageHandler(me, comm, db, cmdQueue)
     messageHandler start
