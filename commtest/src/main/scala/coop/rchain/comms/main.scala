@@ -70,8 +70,30 @@ class Receiver(comm: Comm, commands: BlockingQueue[Protocol]) extends Thread {
 }
 
 object CommTest {
-  def makeEndpoint(spec: String): Endpoint = {
+  def makeEndpoint(spec: String) = 
     EndpointFactory.fromString(spec, defaultPort = Defaults.listenPort)
+
+  def bootstrap(me: UUID, comm: Comm, listen: Endpoint, home: Endpoint) = {
+    val homeId = UUID.randomUUID
+    val peer = new Peer(homeId, home)
+    comm.addPeer(peer)
+    val factory = new MessageFactory(me)
+    val buf = new java.io.ByteArrayOutputStream
+
+    factory.protocol.withHello(factory.hello.withNode(factory.node(new Peer(me, listen)))) writeTo buf
+    comm.sendTo(buf.toByteArray, homeId)
+
+    buf.reset
+    factory.protocol.withGetPeers(factory.getPeers) writeTo buf
+    comm.sendTo(buf.toByteArray, homeId)
+
+    buf.reset
+    factory.protocol.withGetBlocks(factory.getBlocks) writeTo buf
+    comm.sendTo(buf.toByteArray, homeId)
+
+    buf.reset
+    factory.protocol.withDisconnect(factory.disconnect) writeTo buf
+    comm.sendTo(buf.toByteArray, homeId)
   }
 
   def main(args: Array[String]) {
@@ -83,7 +105,7 @@ object CommTest {
       .filter { x => x != "" }
       .map { x => makeEndpoint(x) }
 
-    val db = new KeyValueStore
+    val store = new KeyValueStore
 
     println(conf.summary)
 
@@ -102,13 +124,18 @@ object CommTest {
 
     peers foreach { p => comm.addPeer(new Peer(UUID.randomUUID, p)) }
 
-    val messageHandler = new MessageHandler(me, comm, db, cmdQueue)
+    val messageHandler = new MessageHandler(me, comm, store, cmdQueue)
     messageHandler start
+
+    val receiver = new Receiver(comm, cmdQueue)
+    receiver start
+
+    if (conf.home.isSupplied) {
+      val addy = makeEndpoint(s"localhost:${listen port}") // Replace with public IP
+      bootstrap(me, comm, addy, makeEndpoint(conf.home()))
+    }
 
     val http = new HttpServer(conf.httpPort(), messageHandler)
     http start
-
-    val receiver = new Receiver(comm, cmdQueue)
-    receiver.start
   }
 }

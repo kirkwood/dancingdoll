@@ -13,6 +13,8 @@ object ZeromqComm {
 
 class ZeromqComm(p: Peer) extends Comm {
 
+  val myself = new Peer(p.id, new Endpoint("localhost", p.endpoint.port))
+
   val peers = new TrieMap[UUID,(Peer,ZMQ.Socket)]
 
   /*
@@ -69,6 +71,6 @@ class ZeromqComm(p: Peer) extends Comm {
     peers map { case (id, (p, sock)) => p } toArray
   }
 
-  override def peer = p
+  override def peer = myself
 }
 

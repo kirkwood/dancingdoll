@@ -20,13 +20,22 @@ class MessageFactory(node_id: UUID) {
       .withKey(makeBytes(key))
       .withValue(makeBytes(value))
 
-  def hello = Hello
+  def blocks(ms: Array[Mutation]) =
+    Blocks()
+      .withMutations(ms)
+
+  def getBlocks = GetBlocks()
+
+  def hello = Hello()
+  def disconnect = Disconnect()
 
   def node(p: Peer) =
     Node()
       .withId(makeBytes(p.id toString))
       .withHost(makeBytes(p.endpoint host))
       .withPort(p.endpoint port)
+
+  def getPeers = GetPeers()
 
   def peers(ps: Array[Peer]) =
     Peers()
@@ -60,6 +69,7 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
 
   import Protocol.Message
   def handle(msg: Protocol): Unit = {
+    println(s"Handling $msg.")
     msg.message match {
 
       // Hello: Please add me to your list of peers.
@@ -69,14 +79,28 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
             println("HELLO NODE: ", n)
             comm.addPeer(
               new Peer(
-                UUID.fromString(n.id toString),
+                UUID.fromString(n.id toStringUtf8),
                 new Endpoint(n.host toStringUtf8, n.port toInt)))
           }
-          case None => ()
+          case None => {
+            println(s"No node in $msg?")
+          }
         }
       }
 
-      case Message.Disconnect(_) => ()
+      case Message.Disconnect(_) => {
+        println(s"DISCONNECT: $msg.")
+        msg.header match {
+          case Some(h: Header) => {
+            val caller = UUID.fromString(h.nodeId toStringUtf8)
+            comm.removePeer(caller)
+          }
+          case None => {
+            println(s"No header in $msg?")
+          }
+        }
+      }
+          
 
       case Message.Ping(_) => ()
       case Message.Pong(_) => ()
@@ -85,7 +109,7 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
       // and be sure to include yourself in that.
       case Message.GetPeers(m) => {
         msg.header match {
-          case Some(h) => {
+          case Some(h: Header) => {
             val caller = UUID.fromString(h.nodeId toStringUtf8)
             val peers = comm.getPeers ++ Array(comm.peer)
             val resp = factory.protocol.withPeers(factory.peers(peers))
@@ -94,22 +118,56 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
             comm.sendTo(buf.toByteArray, caller)
             println(s"GET PEERS FROM NODE $caller => $peers YIELDS $resp")
           }
-          case None => ()
+          case None => {
+            println(s"No header in $msg?")
+          }
         }
       }
       case Message.Peers(p) => {
         p.nodes foreach { p =>
-          comm.addPeer(
-            new Peer(
-              UUID.fromString(p.id toStringUtf8),
-              new Endpoint(p.host toStringUtf8, p.port)))
+          val who = UUID.fromString(p.id toStringUtf8)
+          if (who != me) {
+            comm.addPeer(new Peer(who, new Endpoint(p.host toStringUtf8, p.port)))
+          }
         }
+        val buf = new java.io.ByteArrayOutputStream
+        factory.protocol.withHello(factory.hello.withNode(factory.node(comm.peer))) writeTo buf
+        comm.send(buf.toByteArray)
       }
 
       // GetBlocks: Please send me the list of mutations you have
       // recorded against the store.
-      case Message.GetBlocks(_) => ()
-      case Message.Blocks(_) => ()
+      case Message.GetBlocks(_) => {
+        msg.header match {
+          case Some(h) => {
+            if (store.keyValueStore.size == 0) {
+              return ()
+            }
+            val caller = UUID.fromString(h.nodeId toStringUtf8)
+            val nvals = store.keyValueStore.values map { v => v.linkedHashSet.size } reduce { _ + _ }
+            println(s"Size: $nvals.")
+            val muts = new Array[Mutation](nvals)
+            var i = 0
+            for ((k, vs) <- store.keyValueStore) {
+              for (v <- vs.linkedHashSet) {
+                muts(i) = Mutation(factory.makeBytes(k.term), factory.makeBytes(v))
+                i += 1
+              }
+            }
+            val resp = factory.protocol.withBlocks(factory.blocks(muts))
+            buf.reset
+            resp.writeTo(buf)
+            comm.sendTo(buf.toByteArray, caller)
+          }
+          case None => ()
+        }
+      }
+
+      case Message.Blocks(bs) => {
+        bs.mutations foreach { m =>
+          store.add(new Key(m.key toStringUtf8), m.value toStringUtf8)
+        }
+      }
 
       case Message.Mutation(m) => {
         store.add(new Key(m.key toStringUtf8), m.value toStringUtf8)
