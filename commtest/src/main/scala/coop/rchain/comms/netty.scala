@@ -10,7 +10,6 @@ package coop.rchain.comm
 // import io.netty.channel.socket.SocketChannel;
 // import io.netty.channel.socket.nio.NioServerSocketChannel;
 
-
 // import scalaz.netty._
 // import scalaz.stream._
 // import scalaz.concurrent._
@@ -39,14 +38,11 @@ class NettyComm(p: Peer) extends Comm {
     Error("Unimplemented")
   }
 
-  override def addPeer(p: Peer) = {
-  }
+  override def addPeer(p: Peer) = {}
 
-  override def removePeer(p: Peer) = {
-  }
+  override def removePeer(p: Peer) = {}
 
-  override def removePeer(id: java.util.UUID) = {
-  }
+  override def removePeer(id: java.util.UUID) = {}
 
   override def getPeers: Array[Peer] = Array()
 

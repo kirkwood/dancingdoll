@@ -3,7 +3,7 @@ package coop.rchain.comm
 import org.rogach.scallop._
 import coop.rchain.kv._
 
-import java.util.concurrent.{BlockingQueue,LinkedBlockingQueue}
+import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 import java.util.UUID
 
 object Defaults {
@@ -26,7 +26,9 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
 
   validate(transport) { t =>
     if (validTransports contains t) Right(Unit)
-    else Left(s"Bad transport: $t (must be one of: " + (validTransports mkString ", ") + ")")
+    else
+      Left(
+        s"Bad transport: $t (must be one of: " + (validTransports mkString ", ") + ")")
   }
 
   val listen = opt[String](
@@ -41,15 +43,13 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     default = None,
     descr = "Comma-separated list of peer nodes in host:port format.")
 
-  val home = opt[String](
-    default = None,
-    descr = "Home address for initial seed.")
+  val home =
+    opt[String](default = None, descr = "Home address for initial seed.")
 
-  val httpPort = opt[Int](
-    default = Defaults.httpPort,
-    validate = (0 <),
-    short = 'H',
-    descr = "Port on which HTTP server should listen.")
+  val httpPort = opt[Int](default = Defaults.httpPort,
+                          validate = (0 <),
+                          short = 'H',
+                          descr = "Port on which HTTP server should listen.")
 
   verify
 }
@@ -80,7 +80,8 @@ object CommTest {
     val factory = new MessageFactory(me)
     val buf = new java.io.ByteArrayOutputStream
 
-    factory.protocol.withHello(factory.hello.withNode(factory.node(new Peer(me, listen)))) writeTo buf
+    factory.protocol.withHello(
+      factory.hello.withNode(factory.node(new Peer(me, listen)))) writeTo buf
     comm.sendTo(buf.toByteArray, homeId)
 
     buf.reset
@@ -102,8 +103,12 @@ object CommTest {
     val listen = makeEndpoint(conf.listen())
 
     val peers = (conf.peers() split ",")
-      .filter { x => x != "" }
-      .map { x => makeEndpoint(x) }
+      .filter { x =>
+        x != ""
+      }
+      .map { x =>
+        makeEndpoint(x)
+      }
 
     val store = new KeyValueStore
 
@@ -122,7 +127,9 @@ object CommTest {
           new NettyComm(new Peer(me, listen))
       }
 
-    peers foreach { p => comm.addPeer(new Peer(UUID.randomUUID, p)) }
+    peers foreach { p =>
+      comm.addPeer(new Peer(UUID.randomUUID, p))
+    }
 
     val messageHandler = new MessageHandler(me, comm, store, cmdQueue)
     messageHandler start

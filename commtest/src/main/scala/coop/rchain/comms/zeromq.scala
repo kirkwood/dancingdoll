@@ -15,7 +15,7 @@ class ZeromqComm(p: Peer) extends Comm {
 
   val myself = new Peer(p.id, new Endpoint("localhost", p.endpoint.port))
 
-  val peers = new TrieMap[UUID,(Peer,ZMQ.Socket)]
+  val peers = new TrieMap[UUID, (Peer, ZMQ.Socket)]
 
   /*
    * Receiving stuff
@@ -36,11 +36,12 @@ class ZeromqComm(p: Peer) extends Comm {
    */
 
   override def send(data: Array[Byte]) = {
-    peers foreach { case (id, (p, sock)) =>
-      sock.send(data, ZMQ.DONTWAIT) match {
-        case false => Error("Couldn't send to ${id toString}")
-        case _ => Response((s"Sent $data: " getBytes) ++ data)
-      }
+    peers foreach {
+      case (id, (p, sock)) =>
+        sock.send(data, ZMQ.DONTWAIT) match {
+          case false => Error("Couldn't send to ${id toString}")
+          case _     => Response((s"Sent $data: " getBytes) ++ data)
+        }
     }
   }
 
@@ -73,4 +74,3 @@ class ZeromqComm(p: Peer) extends Comm {
 
   override def peer = myself
 }
-

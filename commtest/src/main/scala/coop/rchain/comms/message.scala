@@ -1,7 +1,7 @@
 package coop.rchain.comm
 
 import coop.rchain.kv._
-import java.util.{UUID,Date}
+import java.util.{UUID, Date}
 import java.util.concurrent.BlockingQueue
 
 class MessageFactory(node_id: UUID) {
@@ -45,7 +45,11 @@ class MessageFactory(node_id: UUID) {
     Protocol().withHeader(header)
 }
 
-class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: BlockingQueue[Protocol]) extends Thread {
+class MessageHandler(me: UUID,
+                     comm: Comm,
+                     store: KeyValueStore,
+                     queue: BlockingQueue[Protocol])
+    extends Thread {
   val factory = new MessageFactory(me)
 
   def sendMutation(key: String, value: String): Unit =
@@ -78,9 +82,8 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
           case Some(n: Node) => {
             println("HELLO NODE: ", n)
             comm.addPeer(
-              new Peer(
-                UUID.fromString(n.id toStringUtf8),
-                new Endpoint(n.host toStringUtf8, n.port toInt)))
+              new Peer(UUID.fromString(n.id toStringUtf8),
+                       new Endpoint(n.host toStringUtf8, n.port toInt)))
           }
           case None => {
             println(s"No node in $msg?")
@@ -100,7 +103,6 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
           }
         }
       }
-
 
       case Message.Ping(_) => ()
       case Message.Pong(_) => ()
@@ -127,11 +129,13 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
         p.nodes foreach { p =>
           val who = UUID.fromString(p.id toStringUtf8)
           if (who != me) {
-            comm.addPeer(new Peer(who, new Endpoint(p.host toStringUtf8, p.port)))
+            comm.addPeer(
+              new Peer(who, new Endpoint(p.host toStringUtf8, p.port)))
           }
         }
         val buf = new java.io.ByteArrayOutputStream
-        factory.protocol.withHello(factory.hello.withNode(factory.node(comm.peer))) writeTo buf
+        factory.protocol.withHello(
+          factory.hello.withNode(factory.node(comm.peer))) writeTo buf
         comm.send(buf.toByteArray)
       }
 
@@ -144,13 +148,16 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
               return ()
             }
             val caller = UUID.fromString(h.nodeId toStringUtf8)
-            val nvals = store.keyValueStore.values map { v => v.linkedHashSet.size } reduce { _ + _ }
+            val nvals = store.keyValueStore.values map { v =>
+              v.linkedHashSet.size
+            } reduce { _ + _ }
             println(s"Size: $nvals.")
             val muts = new Array[Mutation](nvals)
             var i = 0
             for ((k, vs) <- store.keyValueStore) {
               for (v <- vs.linkedHashSet) {
-                muts(i) = Mutation(factory.makeBytes(k.term), factory.makeBytes(v))
+                muts(i) =
+                  Mutation(factory.makeBytes(k.term), factory.makeBytes(v))
                 i += 1
               }
             }

@@ -6,7 +6,6 @@ PB.targets in Compile := Seq(
   scalapb.gen(javaConversions = true) -> (sourceManaged in Compile).value
 )
 
-
 addCompilerPlugin(
   "org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full
 )

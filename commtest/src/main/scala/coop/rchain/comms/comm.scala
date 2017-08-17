@@ -4,11 +4,14 @@ class Endpoint(val host: String, val port: Int) {
   override def toString = s"#{Endpoint $host:$port}"
   def format = s"$host:$port"
 
-  def toInetSocketAddress: java.net.InetSocketAddress = new java.net.InetSocketAddress(host, port)
+  def toInetSocketAddress: java.net.InetSocketAddress =
+    new java.net.InetSocketAddress(host, port)
 }
 
 object EndpointFactory {
-  def fromString(hostport: String, defaultHost: String = "*", defaultPort: Int = 44444): Endpoint = {
+  def fromString(hostport: String,
+                 defaultHost: String = "*",
+                 defaultPort: Int = 44444): Endpoint = {
     val stuff = hostport split ":"
     stuff.size match {
       case 1 =>
@@ -37,4 +40,3 @@ trait Comm {
   def getPeers(): Array[Peer]
   def peer(): Peer // Myself
 }
-
