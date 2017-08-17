@@ -13,6 +13,11 @@ object ZeromqComm {
 
 class ZeromqComm(p: Peer) extends Comm {
 
+  /*
+   *  myself represents the connection point for others; it's the
+   *  host:port that others use to connect to this node and will
+   *  include data like the public IP address or domain name, etc.
+   */
   val myself = new Peer(p.id, new Endpoint("localhost", p.endpoint.port))
 
   val peers = new TrieMap[UUID, (Peer, ZMQ.Socket)]
@@ -54,6 +59,10 @@ class ZeromqComm(p: Peer) extends Comm {
       case None => ()
     }
   }
+
+  /*
+   *  Maintaining the peer map.
+   */
 
   override def addPeer(p: Peer) = {
     val s = ZeromqComm.context.socket(ZMQ.PUSH)

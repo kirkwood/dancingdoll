@@ -36,10 +36,9 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
     short = 'p',
     descr = "Address (host:port) on which transport should listen.")
 
-  // Defer analysis of this value until later; it's hard to verify
-  // statically
+  // Defer analysis of these host:port values until later; it's hard
+  // to verify statically
   val peers = opt[String](
-    required = true,
     default = None,
     descr = "Comma-separated list of peer nodes in host:port format.")
 
@@ -102,12 +101,17 @@ object CommTest {
 
     val listen = makeEndpoint(conf.listen())
 
-    val peers = (conf.peers() split ",")
-      .filter { x =>
-        x != ""
-      }
-      .map { x =>
-        makeEndpoint(x)
+    val peers =
+      if (conf.peers.isSupplied) {
+        (conf.peers() split ",")
+          .filter { x =>
+            x != ""
+          }
+          .map { x =>
+            makeEndpoint(x)
+          }
+      } else {
+        new Array[Endpoint](0)
       }
 
     val store = new KeyValueStore
