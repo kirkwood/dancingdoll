@@ -70,7 +70,7 @@ class Receiver(comm: Comm, commands: BlockingQueue[Protocol]) extends Thread {
 }
 
 object CommTest {
-  def makeEndpoint(spec: String) = 
+  def makeEndpoint(spec: String) =
     EndpointFactory.fromString(spec, defaultPort = Defaults.listenPort)
 
   def bootstrap(me: UUID, comm: Comm, listen: Endpoint, home: Endpoint) = {
@@ -114,7 +114,7 @@ object CommTest {
 
     val cmdQueue = new java.util.concurrent.LinkedBlockingQueue[Protocol]
 
-    val comm = 
+    val comm =
       conf.transport() match {
         case "zeromq" =>
           new ZeromqComm(new Peer(me, listen))
