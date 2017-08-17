@@ -100,7 +100,7 @@ class MessageHandler(me: UUID, comm: Comm, store: KeyValueStore, queue: Blocking
           }
         }
       }
-          
+
 
       case Message.Ping(_) => ()
       case Message.Pong(_) => ()
