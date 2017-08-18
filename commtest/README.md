@@ -27,7 +27,7 @@ in which these nodes are started doesn't matter, so:
 ```
 $ sbt "run --listen *:33333 --http-port 8883"
 ```
-and maybe set a values:
+and maybe set a value:
 ```
 $ curl 'localhost:8883/set/A(x)/foo'
 ```
