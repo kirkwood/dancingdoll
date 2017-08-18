@@ -1,16 +1,14 @@
 # rchain-comm-doodles
 Communication doodles for rchain.
 
-`coop.rchain.comm.CommTest` is a simple application that attempts to keep _n_ copies of a database in sync. Currently, it only ships mutations around, there is
- 1. no discovery protocol; all nodes must be known upfront;
- 1. no initial synchronization protocol; and,
- 1. no arbitration or consensus
+`coop.rchain.comm.CommTest` is a simple application that attempts to
+keep _n_ copies of a database in sync. There is a rudimentary
+"discovery" protocol, whereby a new node can join the mesh, receive
+the current state of the store, and maintain future mutations. There
+is no arbitration or concensus, so order may differ among the nodes.
  
-If that sounds limiting, then you're right. What it _does_ have is a
-very abstracted communication subsystem that will allow us to try out
-different mechanisms for getting bytes from point A to point
-B. There's also an HTTP server baked into each process, which allows
-one to interact with them.
+Each node also runs an HTTP server, which allows interaction with the
+store (setting values, querying the store, and so on).
 
 For each copy of this you want to run, decide on
  1. a communication port and
@@ -20,31 +18,38 @@ For each copy of this you want to run, decide on
 
 #### Running the things
 
-Suppose I want to run on one physical machine three nodes A, B, and C, listening on ports 33333, 33334, and 33335 (respectively). Give them each an HTTP server, with HTTP ports 8883, 8884, and 8885. Then, we know that for node A (for example), its peers will be listening on ports 33334 and 33335. This table makes the topology explicit:
+Suppose I want to run on one physical machine three nodes A, B, and C,
+listening on ports 33333, 33334, and 33335 (respectively). Give them
+each an HTTP server, with HTTP ports 8883, 8884, and 8885. The order
+in which these nodes are started doesn't matter, so:
 
-| Node name (for your reference) | listen address | peer addresses | http interaction port |
-| --- | --- | --- | --- |
-| A | *:33333 | localhost:33334, localhost:33335 | 8883 |
-| B | *:33334 | localhost:33333, localhost:33335 | 8884 |
-| C | *:33335 | localhost:33333, localhost:33334 | 8885 |
-
-(If the nodes run on machines with different addresses, they may not need to set the listen address or http port, as the defaults `*:33333` and `8878` may work fine.)
-
-The three nodes may be run in three separate terminals (for instance) with:
-
-Node A
+##### Run Node A
 ```
-$ sbt "run --peers localhost:33334,localhost:33335 --listen *:33333 --http-port 8883"
+$ sbt "run --listen *:33333 --http-port 8883"
+```
+and maybe set a value:
+```
+$ curl 'localhost:8883/set/A(x)/foo'
 ```
 
-Node B
+##### Run Node B, attaching it to A
 ```
-$ sbt "run --peers localhost:33333,localhost:33335 --listen *:33334 --http-port 8884"
+$ sbt "run --home localhost:33333 --listen *:33334 --http-port 8884"
+```
+and dump its current state to verify:
+```
+$ curl 'localhost:8884/dump'
+1. A(x) -> [foo]
 ```
 
-Node C
+##### Node C attaches to either A or B; here we chose B:
 ```
-$ sbt "run --peers localhost:33333,localhost:33334 --listen *:33335 --http-port 8885"
+$ sbt "run --home localhost:33334 --listen *:33335 --http-port 8885"
+```
+and check its state as well
+```
+$ curl 'localhost:8885/dump'
+1. A(x) -> [foo]
 ```
 
 #### Interacting with the things
@@ -62,12 +67,12 @@ Add the kv pair `(:key, :value)` to the store.
 ##### POST `/set`
 Same as the GET version, but JSON of the form `{"key": :key, "value": :value}` may be in the POST body. This is useful if either `:key` or `:value` is complicated enough to make the command line irritating.
 
-Here's an example interaction with the three processes A, B, and C above (with debugging output shortened in cases):
-Add the pair `(A(x), foo)` to the store at node A
+Here's an example interaction with the three nodes A, B, and C above (with debugging output shortened in cases):
+Add the pair `(A(x), foo)` to the store at A
 ```
 $ curl localhost:8883/'set/A(x)/foo'
 ```
-and fetch it from node B
+and fetch it from B
 ```
 curl 'localhost:8884/get/A(x)'
 ["A(x)",["{x} -> [foo]"]]
