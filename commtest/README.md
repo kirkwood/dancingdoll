@@ -67,6 +67,9 @@ Add the kv pair `(:key, :value)` to the store.
 ##### POST `/set`
 Same as the GET version, but JSON of the form `{"key": :key, "value": :value}` may be in the POST body. This is useful if either `:key` or `:value` is complicated enough to make the command line irritating.
 
+##### GET `/peers`
+Returns the current list of peers known to the receiver.
+
 Here's an example interaction with the three nodes A, B, and C above (with debugging output shortened in cases):
 Add the pair `(A(x), foo)` to the store at A
 ```
