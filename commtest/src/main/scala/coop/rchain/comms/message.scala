@@ -1,7 +1,7 @@
 package coop.rchain.comm
 
 import coop.rchain.kv._
-import java.util.{UUID, Date}
+import java.util.{Date, UUID}
 import java.util.concurrent.BlockingQueue
 
 class MessageFactory(node_id: UUID) {
@@ -68,6 +68,20 @@ class MessageHandler(me: UUID,
     out toString
   }
 
+  def peers = {
+    val out = new java.io.ByteArrayOutputStream
+    Console.withOut(out) {
+      println("[")
+      comm.getPeers foreach { p =>
+        println(s"  (${p.id} (${p.endpoint.host}:${p.endpoint.port}))")
+      }
+      val p = comm.peer
+      println(s"  (${p.id} (${p.endpoint.host}:${p.endpoint.port}))")
+      println("]")
+    }
+    out toString
+  }
+
   val buf = new java.io.ByteArrayOutputStream
   val uuid_str = me toString
 
@@ -125,6 +139,7 @@ class MessageHandler(me: UUID,
           }
         }
       }
+
       case Message.Peers(p) => {
         p.nodes foreach { p =>
           val who = UUID.fromString(p.id toStringUtf8)

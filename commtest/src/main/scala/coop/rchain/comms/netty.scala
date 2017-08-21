@@ -26,17 +26,15 @@ class NettyComm(p: Peer) extends Comm {
 
   val senders: Array[Endpoint] = Array()
 
-  override def send(data: Array[Byte]) = {
+  override def send(data: Array[Byte]) =
     senders foreach { s =>
       ()
     }
-  }
 
   override def sendTo(data: Array[Byte], id: java.util.UUID) = ()
 
-  override def recv(): Result = {
+  override def recv(): Result =
     Error("Unimplemented")
-  }
 
   override def addPeer(p: Peer) = {}
 

@@ -67,6 +67,9 @@ Add the kv pair `(:key, :value)` to the store.
 ##### POST `/set`
 Same as the GET version, but JSON of the form `{"key": :key, "value": :value}` may be in the POST body. This is useful if either `:key` or `:value` is complicated enough to make the command line irritating.
 
+##### GET `/peers`
+Returns the current list of peers known to the receiver.
+
 Here's an example interaction with the three nodes A, B, and C above (with debugging output shortened in cases):
 Add the pair `(A(x), foo)` to the store at A
 ```
@@ -101,3 +104,22 @@ $ ls -l /tmp/dump.*
 $ diff3 /tmp/dump.*
 <no output>
 ```
+### Strawman Bootstrapping Protocol
+Bootstrapping a new node requires a "home" node to contact for
+initialization. Any node may serve this purpose, and the bootstrapping
+node joins that node's network. The protocol is simple for a new node
+N and a home node O:
+
+1. N sends `Hello` to O causing O to add N to its list of peers
+1. N sends `GetPeers` to O
+1. O sends `Peers` (a list of O's peers) back to N causing N to use as peers all of O's peers
+1. N sends `Hello` to each new peer received from O; N is a member of the network now
+1. N sends `GetBlocks` to O
+1. O sends `Blocks` (all known blocks) to N
+
+Since these are essentially unsorted blocks, there are still
+races. The obvious one: a mutation observed at a node Q in the network
+other than O or N after N sends `Hello` to Q but before that message
+is processed by Q will not be registered by N unless it also is
+observed at O before the `Blocks` response from O to N is built.
+

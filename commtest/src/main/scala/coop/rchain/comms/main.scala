@@ -54,7 +54,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
 }
 
 class Receiver(comm: Comm, commands: BlockingQueue[Protocol]) extends Thread {
-  override def run(): Unit = {
+  override def run(): Unit =
     while (true) {
       val stuff = comm.recv()
       stuff match {
@@ -65,7 +65,6 @@ class Receiver(comm: Comm, commands: BlockingQueue[Protocol]) extends Thread {
         case Error(e) => println(s"Error: $e")
       }
     }
-  }
 }
 
 object CommTest {
@@ -94,6 +93,8 @@ object CommTest {
     buf.reset
     factory.protocol.withDisconnect(factory.disconnect) writeTo buf
     comm.sendTo(buf.toByteArray, homeId)
+
+    comm.removePeer(peer)
   }
 
   def main(args: Array[String]) {
@@ -103,13 +104,7 @@ object CommTest {
 
     val peers =
       if (conf.peers.isSupplied) {
-        (conf.peers() split ",")
-          .filter { x =>
-            x != ""
-          }
-          .map { x =>
-            makeEndpoint(x)
-          }
+        (conf.peers() split ",") filter { _ != "" } map makeEndpoint
       } else {
         new Array[Endpoint](0)
       }
@@ -148,5 +143,13 @@ object CommTest {
 
     val http = new HttpServer(conf.httpPort(), messageHandler)
     http start
+
+    sys.addShutdownHook({
+      val factory = new MessageFactory(me)
+      val buf = new java.io.ByteArrayOutputStream
+      factory.protocol.withDisconnect(factory.disconnect) writeTo buf
+      comm.send(buf.toByteArray)
+      println("disconnected")
+    })
   }
 }

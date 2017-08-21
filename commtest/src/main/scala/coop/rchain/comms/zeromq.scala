@@ -40,7 +40,7 @@ class ZeromqComm(p: Peer) extends Comm {
    * Sending stuff
    */
 
-  override def send(data: Array[Byte]) = {
+  override def send(data: Array[Byte]) =
     peers foreach {
       case (id, (p, sock)) =>
         sock.send(data, ZMQ.DONTWAIT) match {
@@ -48,9 +48,8 @@ class ZeromqComm(p: Peer) extends Comm {
           case _     => Response((s"Sent $data: " getBytes) ++ data)
         }
     }
-  }
 
-  override def sendTo(data: Array[Byte], id: UUID) = {
+  override def sendTo(data: Array[Byte], id: UUID) =
     peers.get(id) match {
       case Some((p, sock)) => {
         sock.send(data, ZMQ.DONTWAIT)
@@ -58,7 +57,6 @@ class ZeromqComm(p: Peer) extends Comm {
       }
       case None => ()
     }
-  }
 
   /*
    *  Maintaining the peer map.
@@ -73,13 +71,11 @@ class ZeromqComm(p: Peer) extends Comm {
 
   override def removePeer(p: Peer) = removePeer(p.id)
 
-  override def removePeer(id: UUID) = {
+  override def removePeer(id: UUID) =
     peers.remove(id)
-  }
 
-  override def getPeers: Array[Peer] = {
+  override def getPeers: Array[Peer] =
     peers map { case (id, (p, sock)) => p } toArray
-  }
 
   override def peer = myself
 }

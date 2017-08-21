@@ -18,7 +18,7 @@ class HttpServer(port: Int, msgHandler: MessageHandler) {
 
   var server: Server = null
 
-  val echoService = HttpService {
+  val service = HttpService {
     case GET -> Root =>
       Ok("Roger that.\n")
     case GET -> Root / "set" / key / value =>
@@ -39,11 +39,14 @@ class HttpServer(port: Int, msgHandler: MessageHandler) {
       Ok("Fetch what?!")
     case GET -> Root / "dump" =>
       Ok(msgHandler dump)
+
+    case GET -> Root / "peers" =>
+      Ok(msgHandler peers)
   }
 
   val bld = BlazeBuilder
     .bindHttp(port, "localhost")
-    .mountService(echoService, "/")
+    .mountService(service, "/")
 
   def start = {
     println(s"Starting HTTP on $port.")
