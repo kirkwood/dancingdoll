@@ -60,6 +60,15 @@ class MessageHandler(me: UUID,
     QueryTools.queryResultsToArrayString(key, key.unifyQuery(store), store)
   }
 
+  def getAll =
+    "{" + ((store.keyValueStore map {
+      case (k, vs) =>
+        '"' + k.term + "\":[" +
+          (vs.list map { '"' + _.toString + '"' } mkString (",")) +
+          "]"
+    }) mkString (",")) +
+      "}" // whee
+
   def dump = {
     val out = new java.io.ByteArrayOutputStream
     Console.withOut(out) {
@@ -92,6 +101,7 @@ class MessageHandler(me: UUID,
 
       // Hello: Please add me to your list of peers.
       case Message.Hello(h) => {
+        println(s"Got HELLO $h")
         h.node match {
           case Some(n: Node) => {
             println("HELLO NODE: ", n)
@@ -164,15 +174,15 @@ class MessageHandler(me: UUID,
             }
             val caller = UUID.fromString(h.nodeId toStringUtf8)
             val nvals = store.keyValueStore.values map { v =>
-              v.linkedHashSet.size
+              v.list.size
             } reduce { _ + _ }
             println(s"Size: $nvals.")
             val muts = new Array[Mutation](nvals)
             var i = 0
             for ((k, vs) <- store.keyValueStore) {
-              for (v <- vs.linkedHashSet) {
+              for (v <- vs.iterator) {
                 muts(i) =
-                  Mutation(factory.makeBytes(k.term), factory.makeBytes(v))
+                  Mutation(factory.makeBytes(k.term), factory.makeBytes(v toString))
                 i += 1
               }
             }
@@ -187,12 +197,12 @@ class MessageHandler(me: UUID,
 
       case Message.Blocks(bs) => {
         bs.mutations foreach { m =>
-          store.add(new Key(m.key toStringUtf8), m.value toStringUtf8)
+          store.add(new Key(m.key toStringUtf8), new Value(m.value toStringUtf8))
         }
       }
 
       case Message.Mutation(m) => {
-        store.add(new Key(m.key toStringUtf8), m.value toStringUtf8)
+        store.add(new Key(m.key toStringUtf8), new Value(m.value toStringUtf8))
         msg.header match {
           case Some(h: Header) => {
             println(h)

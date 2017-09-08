@@ -53,7 +53,6 @@ class ZeromqComm(p: Peer) extends Comm {
     peers.get(id) match {
       case Some((p, sock)) => {
         sock.send(data, ZMQ.DONTWAIT)
-        ()
       }
       case None => ()
     }

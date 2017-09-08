@@ -34,9 +34,10 @@ class HttpServer(port: Int, msgHandler: MessageHandler) {
       } yield (resp)
     case GET -> Root / "get" / key =>
       val queryOutcome = msgHandler.query(key)
-      Ok(((queryOutcome asJson) noSpaces) + "\n")
+      Ok(((queryOutcome.standard asJson) noSpaces) + "\n")
     case GET -> Root / "get" =>
-      Ok("Fetch what?!")
+      // Ok("Fetch what?!")
+      Ok(msgHandler getAll)
     case GET -> Root / "dump" =>
       Ok(msgHandler dump)
 
