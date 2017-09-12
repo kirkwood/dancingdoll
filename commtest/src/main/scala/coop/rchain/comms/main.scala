@@ -60,7 +60,11 @@ class Receiver(comm: Comm, commands: BlockingQueue[Protocol]) extends Thread {
       stuff match {
         case Response(d) => {
           println(s"Received: " + new String(d))
-          commands add (Protocol parseFrom d)
+          try {
+            commands add (Protocol parseFrom d)
+          } catch {
+            case e: Exception => e.printStackTrace
+          }
         }
         case Error(e) => println(s"Error: $e")
       }
@@ -138,6 +142,7 @@ object CommTest {
 
     if (conf.home.isSupplied) {
       val addy = makeEndpoint(s"localhost:${listen port}") // Replace with public IP
+      println(s"Homing from $addy.")
       bootstrap(me, comm, addy, makeEndpoint(conf.home()))
     }
 
