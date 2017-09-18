@@ -17,7 +17,7 @@ class Conf(arguments: Seq[String]) extends ScallopConf(arguments) {
   version("0.0.1 rchain blah blah")
 
   // These keywords denote implemented transports
-  val validTransports = Set("zeromq", "netty")
+  val validTransports = Set("zeromq", "netty", "udp")
 
   val transport = opt[String](
     default = Defaults.transport,
@@ -73,7 +73,7 @@ class Receiver(comm: Comm, commands: BlockingQueue[Protocol]) extends Thread {
 
 object CommTest {
   def makeEndpoint(spec: String) =
-    EndpointFactory.fromString(spec, defaultPort = Defaults.listenPort)
+    Endpoint.fromString(spec, defaultPort = Defaults.listenPort)
 
   def bootstrap(me: UUID, comm: Comm, listen: Endpoint, home: Endpoint) = {
     val homeId = UUID.randomUUID
@@ -128,6 +128,8 @@ object CommTest {
           new ZeromqComm(new Peer(me, listen))
         case "netty" =>
           new NettyComm(new Peer(me, listen))
+        case "udp" =>
+          new UnicastComm(new Peer(me, listen))
       }
 
     peers foreach { p =>
