@@ -21,7 +21,7 @@ class NettyComm(p: Peer) extends Comm {
   // val workerGroup = new NioEventLoopGroup
 
   // lazy val senders = peers map { p =>
-  //   Netty connect p.toInetSocketAddress
+  //   Netty connect p.endpoint.inetSocketAddress
   // }
 
   val senders: Array[Endpoint] = Array()
