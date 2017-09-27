@@ -54,7 +54,7 @@ object PeerTable {
   // val bucketWidth = 1
 }
 
-class PeerTable[A <: Keyed](home: A,
+class PeerTable[A <: Peer](home: A,
                             val k: Int = PeerTable.redundancy,
                             val alpha: Int = PeerTable.alpha) {
   val width = 8 * home.key.size
@@ -72,7 +72,10 @@ class PeerTable[A <: Keyed](home: A,
           // Protocol error -- need throttling
           println(s"Multiple pings in flight for $older.")
         }
-        case None => pending(older.key) = (older, newer)
+        case None => {
+          pending(older.key) = (older, newer)
+          older.ping
+        }
       }
     }
   }
