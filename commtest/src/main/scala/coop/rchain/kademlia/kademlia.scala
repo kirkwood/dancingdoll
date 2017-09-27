@@ -52,8 +52,10 @@ object NodeTable {
   // val bucketWidth = 1
 }
 
-class PeerTable[A <: Keyed](home: A, val k: Int = NodeTable.redundancy, val alpha: Int = NodeTable.alpha) {
-  val width = 8*home.key.size
+class PeerTable[A <: Keyed](home: A,
+                            val k: Int = NodeTable.redundancy,
+                            val alpha: Int = NodeTable.alpha) {
+  val width = 8 * home.key.size
   val table = new Array[MutableList[PeerTableEntry[A]]](width)
   // val byLatency = PriorityQueue.empty(LatencyOrder.reverse)
   // val byReputation = PriorityQueue.empty(ReputationOrder)

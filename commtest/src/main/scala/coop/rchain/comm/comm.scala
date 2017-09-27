@@ -63,4 +63,3 @@ class PeerMap[A] {
       f(p, a)
   }
 }
-
