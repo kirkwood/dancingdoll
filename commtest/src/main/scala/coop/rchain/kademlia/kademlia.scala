@@ -1,6 +1,6 @@
 package coop.rchain.kademlia
 
-import scala.collection.mutable.{HashMap, MutableList, PriorityQueue}
+import scala.collection.mutable
 
 trait Keyed {
   def key: Array[Byte]
@@ -55,13 +55,18 @@ object PeerTable {
 }
 
 class PeerTable[A <: Peer](home: A,
-                            val k: Int = PeerTable.redundancy,
-                            val alpha: Int = PeerTable.alpha) {
-  val width = 8 * home.key.size
-  val table = new Array[MutableList[PeerTableEntry[A]]](width)
-  // val byLatency = PriorityQueue.empty(LatencyOrder.reverse)
-  // val byReputation = PriorityQueue.empty(ReputationOrder)
-  val pending = new HashMap[Array[Byte], (A, A)]
+                           val k: Int = PeerTable.redundancy,
+                           val alpha: Int = PeerTable.alpha) {
+
+  type Entry = PeerTableEntry[A]
+
+  val width = home.key.size // in bytes
+  val table = Array.fill(8 * width) {
+    new mutable.MutableList[Entry]
+  }
+  // val byLatency = mutable.PriorityQueue.empty(LatencyOrder.reverse)
+  // val byReputation = mutable.PriorityQueue.empty(ReputationOrder)
+  val pending = new mutable.HashMap[Array[Byte], (A, A)]
 
   private def ping(older: A, newer: A): Unit = {
     // TODO constrain to alpha in flight
@@ -81,10 +86,13 @@ class PeerTable[A <: Peer](home: A,
   }
 
   // Kademlia XOR distance function.
-  def distance(a: A, b: A): Int = {
-    // TODO: ensure keys same length
-    if (a == b || a.key == b.key) {
-      return width
+  def distance(a: A, b: A): Option[Int] = {
+    if (a.key.size != width || b.key.size != width) {
+      return None
+    }
+
+    if (a == b) {
+      return Some(8 * width)
     }
 
     var dist = 0
@@ -95,35 +103,33 @@ class PeerTable[A <: Peer](home: A,
         for (j <- 7 to 0 by -1) {
           val m = (1 << j).asInstanceOf[Byte]
           if ((a.key(i) & m) != (b.key(i) & m)) {
-            return dist + (7 - j)
+            return Some(dist + (7 - j))
           }
         }
       }
     }
-    dist
+    Some(dist)
   }
 
-  def add(a: A) {
-    val ind = distance(home, a)
-    // TODO: Bounds check 0 <= ind < table.size
-    table synchronized {
-      table(ind) match {
-        case null => {
-          table(ind) = MutableList[PeerTableEntry[A]](new PeerTableEntry[A](a))
-          // byLatency += a
-          // byReputation += a
-        }
-        case l => {
-          if (l.size < k) {
-            l += new PeerTableEntry[A](a)
-          } else {
-            // ping first (oldest) element; if it responds, move it to back
-            // (newest); if it doesn't respond, remove it and place a in
-            // back
-            ping(l(0).entry, a)
+  def observe(a: A): Unit =
+    distance(home, a) match {
+      case Some(index) => {
+        if (index < 8*width) {
+          val ps = table(index)
+          ps synchronized {
+            if (ps.size < k) {
+              ps += new Entry(a)
+              // byLatency += a
+              // byReputation += a
+            } else {
+              // ping first (oldest) element; if it responds, move it to back
+              // (newest); if it doesn't respond, remove it and place a in
+              // back
+              ping(ps(0).entry, a)
+            }
           }
         }
       }
+      case None => ()
     }
-  }
 }
