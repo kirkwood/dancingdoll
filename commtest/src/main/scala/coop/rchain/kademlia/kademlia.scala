@@ -34,7 +34,7 @@ class PeerTableEntry[A <: Keyed](val entry: A) extends Keyed {
   override def toString = s"#{PeerTableEntry $entry}"
 }
 
-object NodeTable {
+object PeerTable {
   // Number of bits considered in the distance function. Taken from the passed-in "home" value to the table.
   // val width = 256
 
@@ -53,8 +53,8 @@ object NodeTable {
 }
 
 class PeerTable[A <: Keyed](home: A,
-                            val k: Int = NodeTable.redundancy,
-                            val alpha: Int = NodeTable.alpha) {
+                            val k: Int = PeerTable.redundancy,
+                            val alpha: Int = PeerTable.alpha) {
   val width = 8 * home.key.size
   val table = new Array[MutableList[PeerTableEntry[A]]](width)
   // val byLatency = PriorityQueue.empty(LatencyOrder.reverse)
