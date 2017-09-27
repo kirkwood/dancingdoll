@@ -35,7 +35,9 @@ class PeerTableEntry[A <: Keyed](val entry: A) extends Keyed {
 }
 
 object PeerTable {
-  // Number of bits considered in the distance function. Taken from the passed-in "home" value to the table.
+  // Number of bits considered in the distance function. Taken from the
+  // passed-in "home" value to the table.
+  //
   // val width = 256
 
   // Maximum length of each row of the routing table.
