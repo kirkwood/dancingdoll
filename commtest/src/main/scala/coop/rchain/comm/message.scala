@@ -181,8 +181,8 @@ class MessageHandler(me: UUID,
             var i = 0
             for ((k, vs) <- store.keyValueStore) {
               for (v <- vs.iterator) {
-                muts(i) =
-                  Mutation(factory.makeBytes(k.term), factory.makeBytes(v toString))
+                muts(i) = Mutation(factory.makeBytes(k.term),
+                                   factory.makeBytes(v toString))
                 i += 1
               }
             }
@@ -197,7 +197,8 @@ class MessageHandler(me: UUID,
 
       case Message.Blocks(bs) => {
         bs.mutations foreach { m =>
-          store.add(new Key(m.key toStringUtf8), new Value(m.value toStringUtf8))
+          store.add(new Key(m.key toStringUtf8),
+                    new Value(m.value toStringUtf8))
         }
       }
 
