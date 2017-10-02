@@ -2,6 +2,7 @@ package coop.rchain.comm
 
 import org.rogach.scallop._
 import coop.rchain.kv._
+import coop.rchain.comm.protocol.kv._
 
 import java.util.concurrent.{BlockingQueue, LinkedBlockingQueue}
 import java.util.UUID

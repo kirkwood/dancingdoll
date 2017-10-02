@@ -1,13 +1,18 @@
 package coop.rchain.kademlia
 
 import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success, Try}
+import java.util.concurrent.Executors
+import scala.annotation.tailrec
 
 trait Keyed {
-  def key: Array[Byte]
+  def key: Seq[Byte]
 }
 
 trait Remote {
-  def ping: Unit
+  def ping: Try[Duration]
 }
 
 trait Peer extends Remote with Keyed
@@ -28,9 +33,9 @@ object ReputationOrder extends Ordering[Reputable] {
   def compare(a: Reputable, b: Reputable) = a.reputation compare b.reputation
 }
 
-class PeerTableEntry[A <: Keyed](val entry: A) extends Keyed {
+case class PeerTableEntry[A <: Keyed](val entry: A) extends Keyed {
+  var pinging = false
   override def key = entry.key
-
   override def toString = s"#{PeerTableEntry $entry}"
 }
 
@@ -38,98 +43,172 @@ object PeerTable {
   // Number of bits considered in the distance function. Taken from the
   // passed-in "home" value to the table.
   //
-  // val width = 256
+  // val Width = 256
 
   // Maximum length of each row of the routing table.
-  val redundancy = 20
+  val Redundancy = 20
 
   // Concurrency factor: system allows up to alpha outstanding network
   // requests at a time.
-  val alpha = 3
+  val Alpha = 3
 
   // UNIMPLEMENTED: this parameter controls an optimization that can
   // reduce the number hops required to find an address in the network
   // by grouping keys in buckets of a size larger than one.
   //
-  // val bucketWidth = 1
+  // val BucketWidth = 1
 }
 
-class PeerTable[A <: Peer](home: A,
-                           val k: Int = PeerTable.redundancy,
-                           val alpha: Int = PeerTable.alpha) {
+/** `PeerTable` implements the routing table used in the Kademlia
+  * network discovery and routing protocol.
+  *
+  */
+case class PeerTable[A <: Peer](home: A,
+                                val k: Int = PeerTable.Redundancy,
+                                val alpha: Int = PeerTable.Alpha) {
 
   type Entry = PeerTableEntry[A]
 
   val width = home.key.size // in bytes
   val table = Array.fill(8 * width) {
-    new mutable.MutableList[Entry]
-  }
-  // val byLatency = mutable.PriorityQueue.empty(LatencyOrder.reverse)
-  // val byReputation = mutable.PriorityQueue.empty(ReputationOrder)
-  val pending = new mutable.HashMap[Array[Byte], (A, A)]
-
-  private def ping(older: A, newer: A): Unit = {
-    // TODO constrain to alpha in flight
-    println(s"STUB: Pinging $older, might replace with $newer.")
-    pending synchronized {
-      pending.get(older.key) match {
-        case Some(_) => {
-          // Protocol error -- need throttling
-          println(s"Multiple pings in flight for $older.")
-        }
-        case None => {
-          pending(older.key) = (older, newer)
-          older.ping
-        }
-      }
-    }
+    new mutable.ListBuffer[Entry]
   }
 
-  // Kademlia XOR distance function.
-  def distance(a: A, b: A): Option[Int] = {
-    if (a.key.size != width || b.key.size != width) {
-      return None
-    }
+  /** Computes Kademlia XOR distance.
+    *
+    * Returns the length of the longest common prefix in bits between
+    * the two sequences `a` and `b`. As in Ethereum's implementation,
+    * "closer" nodes have higher distance values.
+    *
+    * @return `Some(Int)` if `a` and `b` are comparable in this table,
+    * `None` otherwise.
+    */
+  def distance(a: Seq[Byte], b: Seq[Byte]): Option[Int] = {
+    @tailrec
+    def highBit(idx: Int): Int =
+      if (idx == width) 8 * width
+      else
+        a(idx) ^ b(idx) match {
+          case 0 => highBit(idx + 1)
+          case n if (n & (0xf0.asInstanceOf[Byte])) != 0 =>
+            // Difference is in the higher nybble.
+            8 * idx + {
+              // Pick off two highest bits.
+              if ((n & 0xc0) != 0) {
+                // It's either the highest or the almost-highest.
+                if (n == (n | 0x80)) 0 else 1
+              } else {
+                // It's either the third or the fourth from the top.
+                if (n == (n | 0x20)) 2 else 3
+              }
+            }
+          // Difference is in the four lowest bits.
+          case n =>
+            8 * idx + {
+              if ((n & 0x0c) != 0) {
+                if (n == (n | 0x08)) 4 else 5
+              } else {
+                if (n == (n | 0x02)) 6 else 7
+              }
+            }
+        }
 
-    if (a == b) {
-      return Some(8 * width)
-    }
+    if (a.size != width || b.size != width) None
+    else Some(highBit(0))
+  }
 
-    var dist = 0
-    for (i <- 0 to width - 1) {
-      if (a.key(i) == b.key(i)) {
-        dist += 8
-      } else {
-        for (j <- 7 to 0 by -1) {
-          val m = (1 << j).asInstanceOf[Byte]
-          if ((a.key(i) & m) != (b.key(i) & m)) {
-            return Some(dist + (7 - j))
+  private val pool = Executors.newFixedThreadPool(alpha)
+  private def ping(ps: mutable.ListBuffer[Entry],
+                   older: Entry,
+                   newer: A): Unit =
+    pool.execute(new Runnable {
+      def run = {
+        val winner =
+          older.entry.ping match {
+            case Success(duration) => older
+            case Failure(e)        => new Entry(newer)
           }
+        ps synchronized {
+          ps -= older
+          ps += winner
+          winner.pinging = false
+          println(s"    ${older.entry} -> ${winner.entry}")
         }
       }
-    }
-    Some(dist)
-  }
+    })
 
-  def observe(a: A): Unit =
-    distance(home, a) match {
-      case Some(index) => {
-        if (index < 8*width) {
+  /** Considers adding `peer` to the routing table.
+    *
+    * If the routing table is not full at the distance `peer` is from
+    * it, add `peer` as the most recenly seen peer at that
+    * distance. If the table is full at that distance, ping the least
+    * recently seen peer there. If that older peer responds, discard
+    * `peer` and use the older peer as the most recently
+    * seen. Otherwise, remove the older peer and use `peer` as the
+    * most recently seen.
+    *
+    * No matter what, this causes a mutation of the peer list at
+    * `peer`'s distance.
+    */
+  def observe(peer: A): Unit =
+    distance(home.key, peer.key) match {
+      case Some(index) =>
+        if (index < 8 * width) {
           val ps = table(index)
           ps synchronized {
-            if (ps.size < k) {
-              ps += new Entry(a)
-              // byLatency += a
-              // byReputation += a
-            } else {
-              // ping first (oldest) element; if it responds, move it to back
-              // (newest); if it doesn't respond, remove it and place a in
-              // back
-              ping(ps(0).entry, a)
+            ps.find(_.key == peer.key) match {
+              case Some(entry) => {
+                ps -= entry
+                ps += entry
+              }
+              case None =>
+                if (ps.size < k) {
+                  ps += new Entry(peer)
+                } else {
+                  // ping first (oldest) element that isn't already being
+                  // pinged. If it responds, move it to back (newest
+                  // position); if it doesn't respond, remove it and place
+                  // a in back instead
+                  ps.find(!_.pinging) foreach {
+                    case candidate => {
+                      candidate.pinging = true
+                      ping(ps, candidate, peer)
+                    }
+                  }
+                }
             }
           }
         }
-      }
       case None => ()
     }
+
+  /**
+    * Return the `k` nodes closest to `key` that this table knows about.
+    */
+  def lookup(key: Seq[Byte])(implicit c: scala.reflect.ClassTag[A]): Array[A] = {
+
+    def sorter(a: A, b: A) =
+      (distance(key, a.key), distance(key, b.key)) match {
+        case (Some(d0), Some(d1)) => d0 > d1
+        case _ => false
+      }
+
+    distance(home.key, key) match {
+      case Some(index) => {
+        val entries = new mutable.ListBuffer[Entry]
+
+        for (i <- index to 8*width - 1; if entries.size < k) {
+          entries ++= table(i).filter(_.entry.key != key)
+        }
+
+        for (i <- index - 1 to 0 by -1; if entries.size < k) {
+          entries ++= table(i)
+        }
+
+        entries.map(_.entry).sortWith(sorter).take(k).toArray
+      }
+      case None => Array.empty
+    }
+  }
+
 }

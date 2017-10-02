@@ -5,6 +5,9 @@ PB.targets in Compile := Seq(
   scalapb.gen(javaConversions = true) -> (sourceManaged in Compile).value
 )
 
+libraryDependencies += "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion % "protobuf"
+
+
 addCompilerPlugin(
   "org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full
 )

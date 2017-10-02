@@ -1,5 +1,13 @@
 syntax = "proto3";
-package coop.rchain;
+
+package coop.rchain.kv;
+
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  package_name: "coop.rchain.comm.protocol.kv"
+  flat_package: true
+};
 
 message Header {
     bytes  node_id   = 1;

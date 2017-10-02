@@ -1,8 +1,9 @@
 package coop.rchain.comm
 
+import coop.rchain.comm.protocol.kv._
 import coop.rchain.kv._
-import java.util.{Date, UUID}
 import java.util.concurrent.BlockingQueue
+import java.util.{Date, UUID}
 
 class MessageFactory(node_id: UUID) {
   def makeBytes(x: String): com.google.protobuf.ByteString =
@@ -14,6 +15,12 @@ class MessageFactory(node_id: UUID) {
     Header()
       .withNodeId(me)
       .withTimestamp((new Date) getTime)
+
+  // def ping =
+  //   Header().withPing
+
+  // def pong =
+  //   Header().withPong
 
   def mutation(key: String, value: String) =
     Mutation()
@@ -128,7 +135,19 @@ class MessageHandler(me: UUID,
         }
       }
 
-      case Message.Ping(_) => ()
+      case Message.Ping(_) => {
+        // msg.header match {
+        //   case Some(h) => {
+        //     val caller = UUID.fromString(h.nodeId.toStringUtf8)
+        //     val resp = factory.protocol.ping
+        //     buf.reset
+        //     resp.writeTo(buf)
+        //     comm.sendTo(buf.toByteArray, caller)
+        //   }
+        //   case None => ()
+        // }
+      }
+
       case Message.Pong(_) => ()
 
       // GetPeers: Please send me a list of peers (ids and addresses),

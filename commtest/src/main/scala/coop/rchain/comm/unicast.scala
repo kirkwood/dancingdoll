@@ -57,7 +57,7 @@ class UnicastComm(p: Peer) extends Comm {
     }
   }
 
-  override def sendTo(data: Array[Byte], id: UUID) =
+  override def sendTo(data: Array[Byte], id: UUID): Unit =
     peers.get(id) match {
       case Some((p, _)) => {
         val payload = encode(data)
